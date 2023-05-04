@@ -11,9 +11,6 @@ class SOM:
     def transform(self, X, y=None):
         pass
 
-    def fit_transform(self, X, y=None):
-        pass
-
 
 
 
