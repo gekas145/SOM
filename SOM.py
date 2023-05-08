@@ -5,20 +5,21 @@ from matplotlib.patches import RegularPolygon, Rectangle
 class SOM:
 
     class NeighbourhoodFunction:
-        def __init__(self, function_name, learning_rate_start, learning_rate_end, epochs):
-            self.learning_rate_start = learning_rate_start
-            self.learning_rate_end = learning_rate_end
+        def __init__(self, function_name, neighbourhood_rate_start, neighbourhood_rate_end, epochs):
+            self.neighbourhood_rate_start = neighbourhood_rate_start
+            self.neighbourhood_rate_end = neighbourhood_rate_end
             self.epochs = epochs
             self.function_name = function_name
 
         def __call__(self, distances, time):
-            scale = self.learning_rate_start*(self.learning_rate_end/self.learning_rate_start)**(time/self.epochs)
+            scale = self.neighbourhood_rate_start*(self.neighbourhood_rate_end/\
+                    self.neighbourhood_rate_start)**(time/self.epochs)
 
             tmp = np.power(distances / scale, 2)
             res = np.exp(-tmp/2)
 
             if self.function_name == "mexican_hat":
-                return (1 - tmp) * res
+                return (1 - tmp/2) * res
             
             return res
 
@@ -49,10 +50,6 @@ class SOM:
         
         self.indexes = np.array([[[i, j] for j in range(ncols)] for i in range(nrows)])
         if self.grid_type == "hex":
-
-            neighbourhood_rate_start += 1
-            neighbourhood_rate_end += 1
-            
             # axial axes for easy distances computation on hexagonal grid
             for i in range(self.indexes.shape[0]):
                 if i % 2 == 0:
@@ -169,9 +166,9 @@ class SOM:
                                             radius=radius, 
                                             lw=1, 
                                             edgecolor="black",
-                                            facecolor=color_dict[self.categories[i, j]]))
+                                            facecolor=color_dict[self.categories[j, i]]))
 
-                ax.annotate(str(self.categories[i, j]), 
+                ax.annotate(str(self.categories[j, i]), 
                             (x, y), 
                             weight="bold", 
                             fontsize=10*d, 
@@ -207,9 +204,9 @@ class SOM:
                                        height=d, 
                                        lw=1, 
                                        edgecolor="black",
-                                       facecolor=color_dict[self.categories[i, j]]))
+                                       facecolor=color_dict[self.categories[j, i]]))
 
-                ax.annotate(str(self.categories[i, j]), 
+                ax.annotate(str(self.categories[j, i]), 
                             (x + d/2, y + d/2), 
                             weight="bold", 
                             fontsize=10*d, 
