@@ -15,11 +15,11 @@ class SOM:
             scale = self.neighbourhood_rate_start*(self.neighbourhood_rate_end/\
                     self.neighbourhood_rate_start)**(time/self.epochs)
 
-            tmp = np.power(distances / scale, 2)
-            res = np.exp(-tmp/2)
+            tmp = np.power(distances/scale, 2)/2
+            res = np.exp(-tmp)
 
             if self.function_name == "mexican_hat":
-                return (1 - tmp/2) * res
+                return (1 - tmp) * res
             
             return res
 
@@ -31,7 +31,7 @@ class SOM:
                  neighbourhood_rate_start=6,
                  neighbourhood_rate_end=2,
                  grid_type="hex",
-                 neighbourhood_func="mexican_hat"):
+                 neighbourhood_func="gaussian"):
 
         self.nrows = nrows
         self.ncols = ncols
@@ -50,7 +50,7 @@ class SOM:
         
         self.indexes = np.array([[[i, j] for j in range(ncols)] for i in range(nrows)])
         if self.grid_type == "hex":
-            # axial axes for easy distances computation on hexagonal grid
+            # axial axes for easier distances computation on hexagonal grid
             for i in range(self.indexes.shape[0]):
                 if i % 2 == 0:
                     self.indexes[i, :, 1] *= 2
@@ -65,7 +65,7 @@ class SOM:
                                                             epochs)
 
     def fit(self, X, y=None):
-        self.vectors = np.random.uniform(0, 1, (self.nrows, self.ncols, X.shape[1]))
+        self.vectors = np.random.uniform(np.min(X), np.max(X), (self.nrows, self.ncols, X.shape[1]))
 
         for t in range(self.epochs):
             learning_rate = self.learning_rate_start * (self.learning_rate_end/self.learning_rate_start)**(t/self.epochs)
