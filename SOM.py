@@ -120,10 +120,9 @@ class SOM:
 
             n_closest_idx.append(np.unravel_index(idx, distances_shape))
 
-
         return np.array(n_closest_idx)
 
-    def plot(self, title="", path=None):
+    def plot(self, title="", path=None, legend=False):
         if self.categories is None:
             raise Exception("This instance should be fitted with categories vector first!")
 
@@ -131,18 +130,24 @@ class SOM:
         color_dict = {unique_categories[i]: f"C{i}" for i in range(unique_categories.shape[0])}
 
         if self.grid_type == "hex":
-            self.__plot_hex(color_dict)
+            self.__plot_hex(color_dict, legend)
         else:
-            self.__plot_rect(color_dict)
+            self.__plot_rect(color_dict, legend)
 
         plt.axis("off")
         plt.title(title)
+        if legend:
+            handles, labels = plt.gca().get_legend_handles_labels()
+            d = dict(zip(labels, handles))
+            handles, labels = np.array(list(d.values())), np.array(list(d.keys()))
+            idx = np.argsort(labels)
+            plt.legend(handles[idx], labels[idx], loc="center left", bbox_to_anchor=(1, 0.75))
         if path:
             plt.savefig(path, dpi=600, bbox_inches="tight")
         else:
             plt.show()
 
-    def __plot_hex(self, color_dict):
+    def __plot_hex(self, color_dict, legend):
 
         radius = 1
         d = np.sqrt(3)*radius/2
@@ -161,19 +166,21 @@ class SOM:
             x = margin + d*(2*i + 1)
             y = height - margin - np.sqrt(3)*d/2
             for j in range(self.nrows):
-                ax.add_patch(RegularPolygon((x, y), 
-                                            6, 
-                                            radius=radius, 
-                                            lw=1, 
-                                            edgecolor="black",
-                                            facecolor=color_dict[self.categories[j, i]]))
 
-                ax.annotate(str(self.categories[j, i]), 
-                            (x, y), 
-                            weight="bold", 
-                            fontsize=10*d, 
-                            ha="center", 
-                            va="center")
+                ax.add_patch(RegularPolygon((x, y),
+                                            6,
+                                            radius=radius,
+                                            lw=1,
+                                            edgecolor="black",
+                                            facecolor=color_dict[self.categories[j, i]],
+                                            label=self.categories[j, i]))
+                if not legend:
+                    ax.annotate(str(self.categories[j, i]), 
+                                (x, y), 
+                                weight="bold", 
+                                fontsize=10*d, 
+                                ha="center", 
+                                va="center")
 
                 if j % 2 == 0:
                     x += d
@@ -181,7 +188,7 @@ class SOM:
                     x -= d
                 y -= np.sqrt(3)*d
 
-    def __plot_rect(self, color_dict):
+    def __plot_rect(self, color_dict, legend):
 
         d = 1
         margin = 1
@@ -199,19 +206,21 @@ class SOM:
             x = margin + d*i
             y = margin + d
             for j in range(self.nrows):
-                ax.add_patch(Rectangle((x, y), 
-                                       width=d, 
-                                       height=d, 
-                                       lw=1, 
-                                       edgecolor="black",
-                                       facecolor=color_dict[self.categories[j, i]]))
 
-                ax.annotate(str(self.categories[j, i]), 
-                            (x + d/2, y + d/2), 
-                            weight="bold", 
-                            fontsize=10*d, 
-                            ha="center", 
-                            va="center")
+                ax.add_patch(Rectangle((x, y),
+                                       width=d,
+                                       height=d,
+                                       lw=1,
+                                       edgecolor="black",
+                                       facecolor=color_dict[self.categories[j, i]],
+                                       label=self.categories[j, i]))
+                if not legend:
+                    ax.annotate(str(self.categories[j, i]), 
+                                (x + d/2, y + d/2), 
+                                weight="bold", 
+                                fontsize=10*d, 
+                                ha="center", 
+                                va="center")
 
                 y += d
 
