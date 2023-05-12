@@ -31,7 +31,8 @@ class SOM:
                  neighbourhood_rate_start=6,
                  neighbourhood_rate_end=2,
                  grid_type="hex",
-                 neighbourhood_func="gaussian"):
+                 neighbourhood_func="gaussian",
+                 bootstrap=None):
 
         self.nrows = nrows
         self.ncols = ncols
@@ -43,6 +44,11 @@ class SOM:
 
         self.learning_rate_start = learning_rate_start
         self.learning_rate_end = learning_rate_end
+
+        if not 0 < bootstrap <= 1:
+            raise ValueError("bootsrap must be from (0, 1])")
+
+        self.bootstrap = bootstrap
 
         if not grid_type in ["hex", "rect"]:
             raise ValueError(f"Unknown grid type {grid_type}")
@@ -66,14 +72,22 @@ class SOM:
 
     def fit(self, X, y=None):
         self.vectors = np.random.uniform(np.min(X), np.max(X), (self.nrows, self.ncols, X.shape[1]))
+        if self.bootstrap:
+            n = int(X.shape[0] * self.bootstrap)
+        else:
+            n = None
 
         for t in range(self.epochs):
+            if self.bootstrap:
+                data = X[np.random.randint(0, X.shape[0], n), :]
+            else:
+                data = X
             learning_rate = self.learning_rate_start * (self.learning_rate_end/self.learning_rate_start)**(t/self.epochs)
-            for i in range(X.shape[0]):
-                bmu = self.get_n_closest_idx(self.vectors, X[i, :])[0]
+            for i in range(data.shape[0]):
+                bmu = self.get_n_closest_idx(self.vectors, data[i, :])[0]
 
                 distances = self.get_grid_distances(bmu)
-                self.vectors += learning_rate * np.expand_dims(self.neighbourhood_func(distances, t), 2) * (X[i, :] - self.vectors)
+                self.vectors += learning_rate * np.expand_dims(self.neighbourhood_func(distances, t), 2) * (data[i, :] - self.vectors)
         
         if y is None:
             return
