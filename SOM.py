@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import RegularPolygon, Rectangle
@@ -15,11 +16,11 @@ class SOM:
             scale = self.neighbourhood_rate_start*(self.neighbourhood_rate_end/\
                     self.neighbourhood_rate_start)**(time/self.epochs)
 
-            tmp = np.power(distances/scale, 2)/2
-            res = np.exp(-tmp)
+            x = np.power(distances/scale, 2)/2
+            res = np.exp(-x)
 
             if self.function_name == "mexican_hat":
-                return (1 - tmp) * res
+                return (1 - x) * res
             
             return res
 
@@ -45,7 +46,7 @@ class SOM:
         self.learning_rate_start = learning_rate_start
         self.learning_rate_end = learning_rate_end
 
-        if not 0 < bootstrap <= 1:
+        if bootstrap and not 0 < bootstrap <= 1:
             raise ValueError("bootsrap must be from (0, 1])")
 
         self.bootstrap = bootstrap
@@ -101,7 +102,7 @@ class SOM:
                 nearest_idx = [idx[0] for idx in nearest_idx]
                 nearest_categories = y[nearest_idx]
                 categories, counts = np.unique(nearest_categories, return_counts=True)
-                self.categories[i, j] = categories[counts.argmax()]
+                self.categories[i, j] = str(categories[counts.argmax()])
 
 
     def get_grid_distances(self, idx):
@@ -237,19 +238,35 @@ class SOM:
                                 va="center")
 
                 y += d
+    
+    def save(self, path):
+        attr_dict = {}
+        for name, value in self.__dict__.items():
+            if name == "indexes":
+                continue
+            if isinstance(value, (np.ndarray, np.generic)):
+                value = value.tolist()
+            elif name == "neighbourhood_func":
+                value = self.neighbourhood_func.function_name
+            
+            attr_dict[name] = value
+        
+        with open(path, "w") as file:
+            json.dump(attr_dict, file)
 
+    @staticmethod
+    def load(path):
+        with open(path, "r") as file:
+            attr_dict = json.load(file)
+        
+        vectors = np.array(attr_dict.pop("vectors"))
+        categories = np.array(attr_dict.pop("categories"))
+        
+        som = SOM(**attr_dict)
+        som.vectors = vectors
+        som.categories = categories
 
-
-
-if __name__ == "__main__":
-
-    som = SOM(5, 3, grid_type="hex")
-
-
-    som.plot(title="Rect grid")
-
-
-
+        return som
 
 
 
