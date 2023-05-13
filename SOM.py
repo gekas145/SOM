@@ -5,7 +5,23 @@ from matplotlib.patches import RegularPolygon, Rectangle
 
 class SOM:
 
+    """ 
+    Self-Organizing Map for high dimensional data visualizations.
+
+    Args:
+        nrows, ncols            : dimensions of self-organizing map.
+        epochs                  : number of epochs.
+        learning_rate_start     : learning rate at first epoch, will be changed by rule lr_time = lr_start(lr_end/lr_start)^(time/epochs).
+        learning_rate_end       : learning at last epoch.
+        neighbourhood_rate_start: neighbourhood rate at first epoch, will be changed similarly as learning rate.
+        neighbourhood_rate_end  : neighbourhood rate at last epoch.
+        grid_type               : type of self-organizing map coordinate system, can be "hex" or "rect".
+        neighbourhood_func      : type of neighbourhood function, can be "gaussian" or "mexican_hat".
+        bootstrap               : if None, no bootstrap will be used, if positive float, then int(X.shape[0]*bootstrap) samples will be randomly drawn on each epoch.
+    """
+
     class NeighbourhoodFunction:
+        """ Help class representing neighbourhood function. """
         def __init__(self, function_name, neighbourhood_rate_start, neighbourhood_rate_end, epochs):
             self.neighbourhood_rate_start = neighbourhood_rate_start
             self.neighbourhood_rate_end = neighbourhood_rate_end
@@ -25,7 +41,8 @@ class SOM:
             return res
 
 
-    def __init__(self, nrows, ncols, 
+    def __init__(self, 
+                 nrows, ncols, 
                  epochs=10,
                  learning_rate_start=0.1,
                  learning_rate_end=0.01,
@@ -46,8 +63,8 @@ class SOM:
         self.learning_rate_start = learning_rate_start
         self.learning_rate_end = learning_rate_end
 
-        if bootstrap and not 0 < bootstrap <= 1:
-            raise ValueError("bootsrap must be from (0, 1])")
+        if bootstrap and bootstrap <= 0:
+            raise ValueError("bootsrap must be greater than 0")
 
         self.bootstrap = bootstrap
 
@@ -72,6 +89,7 @@ class SOM:
                                                             epochs)
 
     def fit(self, X, y=None):
+        """ Fits data to data X, if y provided each vector from map will get a category assigned. """
         self.vectors = np.random.uniform(np.min(X), np.max(X), (self.nrows, self.ncols, X.shape[1]))
         if self.bootstrap:
             n = int(X.shape[0] * self.bootstrap)
@@ -104,21 +122,22 @@ class SOM:
                 categories, counts = np.unique(nearest_categories, return_counts=True)
                 self.categories[i, j] = str(categories[counts.argmax()])
 
-
-    def get_grid_distances(self, idx):
+    def get_grid_distances(self, bmu_idx):
+        """ Calculates distances from best matching unit(bmu) to other points on the grid and returns them as matrix. """
         if self.grid_type == "hex":
             # manhattan distance on hexagonal grid
-            drow = np.abs(self.indexes[:, :, 0] - self.indexes[idx[0], idx[1], 0])
-            dcol = np.abs(self.indexes[:, :, 1] - self.indexes[idx[0], idx[1], 1])
+            drow = np.abs(self.indexes[:, :, 0] - self.indexes[bmu_idx[0], bmu_idx[1], 0])
+            dcol = np.abs(self.indexes[:, :, 1] - self.indexes[bmu_idx[0], bmu_idx[1], 1])
             distances = drow + np.maximum((dcol - drow)/2, 0)
         else:
             # manhattan distance on rectangular grid
-            distances = np.sum(np.abs(self.indexes - idx), axis=2)
+            distances = np.sum(np.abs(self.indexes - bmu_idx), axis=2)
         
         return distances
 
     @staticmethod
     def get_n_closest_idx(X, vector, n=1):
+        """ Returns indexes of n closest vectors from X to vector. """
 
         distances = np.sqrt(np.sum((X - vector)**2, axis=2))
 
@@ -138,6 +157,7 @@ class SOM:
         return np.array(n_closest_idx)
 
     def plot(self, title="", path=None, legend=False):
+        """ Plots 2D map with categories learned in fit function. """
         if self.categories is None:
             raise Exception("This instance should be fitted with categories vector first!")
 
@@ -163,6 +183,7 @@ class SOM:
             plt.show()
 
     def __plot_hex(self, color_dict, legend):
+        """ Plots hexagonal grid. """
 
         radius = 1
         d = np.sqrt(3)*radius/2
@@ -204,6 +225,7 @@ class SOM:
                 y -= np.sqrt(3)*d
 
     def __plot_rect(self, color_dict, legend):
+        """ Plots rectangular grid. """
 
         d = 1
         margin = 1
@@ -240,6 +262,7 @@ class SOM:
                 y += d
     
     def save(self, path):
+        """ Saves all data of this instance to path. """
         attr_dict = {}
         for name, value in self.__dict__.items():
             if name == "indexes":
@@ -256,6 +279,7 @@ class SOM:
 
     @staticmethod
     def load(path):
+        """ Loads saved data and returns SOM intialized with it. """
         with open(path, "r") as file:
             attr_dict = json.load(file)
         
