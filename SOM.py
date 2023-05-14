@@ -43,11 +43,11 @@ class SOM:
 
     def __init__(self, 
                  nrows, ncols, 
-                 epochs=10,
-                 learning_rate_start=0.1,
-                 learning_rate_end=0.01,
-                 neighbourhood_rate_start=6,
-                 neighbourhood_rate_end=2,
+                 epochs=100,
+                 learning_rate_start=1,
+                 learning_rate_end=0.1,
+                 neighbourhood_rate_start=3,
+                 neighbourhood_rate_end=1,
                  grid_type="hex",
                  neighbourhood_func="gaussian",
                  bootstrap=None):
