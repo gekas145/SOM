@@ -159,53 +159,52 @@ class SOM:
 
         return np.array(n_closest_idx)
 
-    def plot(self, title="", path=None, plot_categories=False, legend=False):
+    def plot(self, title="", path=None, plot_umatrix=True, plot_categories=False, legend=False):
         """ Plots umatrix learned from fit, if data categories were provided can also draw category plot. """
+        
+        if self.umatrix is None:
+            raise Exception("This instance should be fitted first!")
+
         if plot_categories and self.categories is None:
             raise Exception("This instance should be fitted with categories vector first!")
 
-        if plot_categories:
-            fig, ax = plt.subplots(1, 2)
+        if plot_categories and plot_umatrix:
+            fig, axs = plt.subplots(1, 2, figsize=(6, 6))
             fig.suptitle(title)
-            ax[0].set_title("Umatrix")
+            axs[0].set_title("Umatrix")
+            axs[1].set_title("Categories")
         else:
-            fig, ax = plt.subplots(1, 1)
-            ax = [ax]
+            fig, axs = plt.subplots(1, 1)
+            axs = [axs]
             plt.title(title)
 
-        im = ax[0].imshow(self.umatrix, 
-                          vmin=np.min(self.umatrix), 
-                          vmax=np.max(self.umatrix), 
-                          cmap=plt.get_cmap("Blues"), 
-                          aspect="auto")
-        cbar = fig.colorbar(im, ax=ax[0], fraction=0.05 * self.umatrix.shape[0] / self.umatrix.shape[1])
-        cbar.set_label("euclidean distance")
-        ax[0].axis("off")
+        if plot_umatrix:
+            self.__plot_umatrix(fig, axs[0])
 
         if plot_categories:
             unique_categories = np.unique(self.categories)
             color_dict = {unique_categories[i]: f"C{i}" for i in range(unique_categories.shape[0])}
 
+            i = int(plot_umatrix)
             if self.grid_type == "hex":
-                self.__plot_hex(color_dict, legend)
+                self.__plot_hex(axs[i], color_dict, legend)
             else:
-                self.__plot_rect(color_dict, legend)
+                self.__plot_rect(axs[i], color_dict, legend)
 
-            ax[1].axis("off")
-            ax[1].set_title("Categories")
+            axs[i].axis("off")
             if legend:
-                handles, labels = ax[1].get_legend_handles_labels()
+                handles, labels = axs[i].get_legend_handles_labels()
                 d = dict(zip(labels, handles))
                 handles, labels = np.array(list(d.values())), np.array(list(d.keys()))
                 idx = np.argsort(labels)
-                ax[1].legend(handles[idx], labels[idx], loc="center left", bbox_to_anchor=(1, 0.75))
+                axs[i].legend(handles[idx], labels[idx], loc="center left", bbox_to_anchor=(1, 0.75))
                 
         if path:
             plt.savefig(path, dpi=600, bbox_inches="tight")
         else:
             plt.show()
 
-    def __plot_hex(self, color_dict, legend):
+    def __plot_hex(self, ax, color_dict, legend):
         """ Plots hexagonal grid. """
 
         radius = 1
@@ -214,9 +213,6 @@ class SOM:
         width = 2*margin + d*(2*self.ncols + 1)
         height = 2*margin + (self.nrows + self.nrows//2 + self.nrows%2)*2*d/np.sqrt(3)
 
-        fig = plt.figure()
-        
-        ax = fig.add_subplot(111)
         ax.set_aspect("equal", adjustable="box")
         ax.set_xlim([0, width])
         ax.set_ylim([0, height])
@@ -247,7 +243,7 @@ class SOM:
                     x -= d
                 y -= np.sqrt(3)*d
 
-    def __plot_rect(self, color_dict, legend):
+    def __plot_rect(self, ax, color_dict, legend):
         """ Plots rectangular grid. """
 
         d = 1
@@ -255,9 +251,6 @@ class SOM:
         width = d*self.ncols + 2*margin
         height = d*self.nrows + 2*margin
 
-        fig = plt.figure()
-        
-        ax = fig.add_subplot(111)
         ax.set_aspect("equal", adjustable="box")
         ax.set_xlim([0, width])
         ax.set_ylim([0, height])
@@ -283,6 +276,16 @@ class SOM:
                                 va="center")
 
                 y += d
+    
+    def __plot_umatrix(self, fig, ax):
+        """ Plots umatrix of fitted map. """
+        im = ax.imshow(self.umatrix, 
+                       vmin=np.min(self.umatrix), 
+                       vmax=np.max(self.umatrix), 
+                       cmap=plt.get_cmap("Blues"))
+        cbar = fig.colorbar(im, ax=ax, fraction=0.05 * self.umatrix.shape[0] / self.umatrix.shape[1])
+        cbar.set_label("euclidean distance")
+        ax.axis("off")
     
     def __umatrix(self):
         """ Calculates umatrix, a 2D array containing distances between high dimensional map vectors. """
