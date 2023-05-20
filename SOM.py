@@ -90,7 +90,7 @@ class SOM:
                                                             epochs)
 
     def fit(self, X, y=None):
-        """ Fits data to data X, if y provided each vector from map will get a category assigned. """
+        """ Fits map to data X, if category vector y provided each vector from map will get a category assigned. """
         self.vectors = np.random.uniform(np.min(X), np.max(X), (self.nrows, self.ncols, X.shape[1]))
         if self.bootstrap:
             n = int(X.shape[0] * self.bootstrap)
@@ -109,7 +109,7 @@ class SOM:
                 distances = self.get_grid_distances(bmu)
                 self.vectors += learning_rate * np.expand_dims(self.neighbourhood_func(distances, t), 2) * (data[i, :] - self.vectors)
         
-        self.__calc_umatrix()
+        self.__umatrix()
         
         if y is None:
             return
@@ -159,27 +159,47 @@ class SOM:
 
         return np.array(n_closest_idx)
 
-    def plot(self, title="", path=None, legend=False):
-        """ Plots 2D map with categories learned in fit function. """
-        if self.categories is None:
+    def plot(self, title="", path=None, plot_categories=False, legend=False):
+        """ Plots umatrix learned from fit, if data categories were provided can also draw category plot. """
+        if plot_categories and self.categories is None:
             raise Exception("This instance should be fitted with categories vector first!")
 
-        unique_categories = np.unique(self.categories)
-        color_dict = {unique_categories[i]: f"C{i}" for i in range(unique_categories.shape[0])}
-
-        if self.grid_type == "hex":
-            self.__plot_hex(color_dict, legend)
+        if plot_categories:
+            fig, ax = plt.subplots(1, 2)
+            fig.suptitle(title)
+            ax[0].set_title("Umatrix")
         else:
-            self.__plot_rect(color_dict, legend)
+            fig, ax = plt.subplots(1, 1)
+            ax = [ax]
+            plt.title(title)
 
-        plt.axis("off")
-        plt.title(title)
-        if legend:
-            handles, labels = plt.gca().get_legend_handles_labels()
-            d = dict(zip(labels, handles))
-            handles, labels = np.array(list(d.values())), np.array(list(d.keys()))
-            idx = np.argsort(labels)
-            plt.legend(handles[idx], labels[idx], loc="center left", bbox_to_anchor=(1, 0.75))
+        im = ax[0].imshow(self.umatrix, 
+                          vmin=np.min(self.umatrix), 
+                          vmax=np.max(self.umatrix), 
+                          cmap=plt.get_cmap("Blues"), 
+                          aspect="auto")
+        cbar = fig.colorbar(im, ax=ax[0], fraction=0.05 * self.umatrix.shape[0] / self.umatrix.shape[1])
+        cbar.set_label("euclidean distance")
+        ax[0].axis("off")
+
+        if plot_categories:
+            unique_categories = np.unique(self.categories)
+            color_dict = {unique_categories[i]: f"C{i}" for i in range(unique_categories.shape[0])}
+
+            if self.grid_type == "hex":
+                self.__plot_hex(color_dict, legend)
+            else:
+                self.__plot_rect(color_dict, legend)
+
+            ax[1].axis("off")
+            ax[1].set_title("Categories")
+            if legend:
+                handles, labels = ax[1].get_legend_handles_labels()
+                d = dict(zip(labels, handles))
+                handles, labels = np.array(list(d.values())), np.array(list(d.keys()))
+                idx = np.argsort(labels)
+                ax[1].legend(handles[idx], labels[idx], loc="center left", bbox_to_anchor=(1, 0.75))
+                
         if path:
             plt.savefig(path, dpi=600, bbox_inches="tight")
         else:
@@ -264,7 +284,8 @@ class SOM:
 
                 y += d
     
-    def __calc_umatrix(self):
+    def __umatrix(self):
+        """ Calculates umatrix, a 2D array containing distances between high dimensional map vectors. """
         self.umatrix = np.zeros((2*self.nrows - 1, 2*self.ncols - 1))
 
         # maps coords from self.indexes to 2D coords from self.vectors
@@ -277,7 +298,7 @@ class SOM:
         else:
             neighbourhood = [[-1, 0], [1, 0], [0, 1], [0, -1]]
 
-        hex_count = 0 # count var used for u matrix calculations for hex grid 
+        hex_count = 0 # count variable, used for umatrix calculations for hex grid 
         for i in range(self.umatrix.shape[0]):
             for j in range(self.umatrix.shape[1]):
 
@@ -286,11 +307,14 @@ class SOM:
                     mapped_coords = self.indexes[i//2, j//2]
                     count = 0
                     distance = 0.0
-                    for n_coords in neighbourhood:
-                        neighbour = coord_dict.get((mapped_coords[0] + n_coords[0], mapped_coords[1] + n_coords[1]), None)
+                    for delta_coords in neighbourhood:
+                        neighbour = coord_dict.get((mapped_coords[0] + delta_coords[0], 
+                                                    mapped_coords[1] + delta_coords[1]), 
+                                                    None)
                         if neighbour:
                             count += 1
-                            distance += np.linalg.norm(self.vectors[i//2, j//2] - self.vectors[neighbour[0], neighbour[1]])
+                            distance += np.linalg.norm(self.vectors[i//2, j//2] -\
+                                                       self.vectors[neighbour[0], neighbour[1]])
                     
                     self.umatrix[i, j] = distance/count # count will be > 0 by this moment
 
@@ -309,19 +333,20 @@ class SOM:
                 else:
                     if self.grid_type == "hex":
                         if hex_count % 2 == 0:
-                            distance = np.linalg.norm(self.vectors[(i + 1)//2, (j - 1)//2] -\
-                                                      self.vectors[(i - 1)//2, (j + 1)//2])
+                            self.umatrix[i, j] = np.linalg.norm(self.vectors[(i + 1)//2, (j - 1)//2] -\
+                                                                self.vectors[(i - 1)//2, (j + 1)//2])
                         else:
-                            distance = np.linalg.norm(self.vectors[(i - 1)//2, (j - 1)//2] -\
-                                                      self.vectors[(i + 1)//2, (j + 1)//2])
-                        self.umatrix[i, j] = distance
+                            self.umatrix[i, j] = np.linalg.norm(self.vectors[(i - 1)//2, (j - 1)//2] -\
+                                                                self.vectors[(i + 1)//2, (j + 1)//2])
                         hex_count += 1
 
                     else:
-                        distance1 = np.linalg.norm(self.vectors[i//2, j//2] - \
+                        distance1 = np.linalg.norm(self.vectors[(i - 1)//2, (j - 1)//2] - \
                                                    self.vectors[(i + 1)//2, (j + 1)//2])
+
                         distance2 = np.linalg.norm(self.vectors[(i - 1)//2, (j + 1)//2] - \
                                                    self.vectors[(i + 1)//2, (j - 1)//2])
+
                         self.umatrix[i, j] = (distance1 + distance2)/2
 
 
