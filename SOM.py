@@ -57,6 +57,7 @@ class SOM:
 
         self.vectors = None
         self.categories = None
+        self.umatrix = None
 
         self.epochs = epochs
 
@@ -74,7 +75,7 @@ class SOM:
         
         self.indexes = np.array([[[i, j] for j in range(ncols)] for i in range(nrows)])
         if self.grid_type == "hex":
-            # axial axes for easier distances computation on hexagonal grid
+            # doubled axes for easier distances computation on hexagonal grid
             for i in range(self.indexes.shape[0]):
                 if i % 2 == 0:
                     self.indexes[i, :, 1] *= 2
@@ -107,6 +108,8 @@ class SOM:
 
                 distances = self.get_grid_distances(bmu)
                 self.vectors += learning_rate * np.expand_dims(self.neighbourhood_func(distances, t), 2) * (data[i, :] - self.vectors)
+        
+        self.__calc_umatrix()
         
         if y is None:
             return
@@ -260,6 +263,69 @@ class SOM:
                                 va="center")
 
                 y += d
+    
+    def __calc_umatrix(self):
+        self.umatrix = np.zeros((2*self.nrows - 1, 2*self.ncols - 1))
+
+        # maps coords from self.indexes to 2D coords from self.vectors
+        # actually has sense only for hex grid, as it uses doubled coords in self.indexes
+        # for rect grid it's just an identity operator
+        coord_dict = {tuple(self.indexes[i, j]): [i, j] for i in range(self.nrows) for j in range(self.ncols)}
+
+        if self.grid_type == "hex":
+            neighbourhood = [[-1, -1], [-1, 1], [0, 2], [1, 1], [1, -1], [0, -2]]
+        else:
+            neighbourhood = [[-1, 0], [1, 0], [0, 1], [0, -1]]
+
+        hex_count = 0 # count var used for u matrix calculations for hex grid 
+        for i in range(self.umatrix.shape[0]):
+            for j in range(self.umatrix.shape[1]):
+
+                if i % 2 == 0 and j % 2 == 0:
+
+                    mapped_coords = self.indexes[i//2, j//2]
+                    count = 0
+                    distance = 0.0
+                    for n_coords in neighbourhood:
+                        neighbour = coord_dict.get((mapped_coords[0] + n_coords[0], mapped_coords[1] + n_coords[1]), None)
+                        if neighbour:
+                            count += 1
+                            distance += np.linalg.norm(self.vectors[i//2, j//2] - self.vectors[neighbour[0], neighbour[1]])
+                    
+                    self.umatrix[i, j] = distance/count # count will be > 0 by this moment
+
+                elif i % 2 == 0 and j % 2 != 0:
+
+                    vector1 = self.vectors[i//2, (j - 1)//2]
+                    vector2 = self.vectors[i//2, (j + 1)//2]
+                    self.umatrix[i, j] = np.linalg.norm(vector1 - vector2)
+
+                elif i % 2 != 0 and j % 2 == 0:
+
+                    vector1 = self.vectors[(i - 1)//2, j//2]
+                    vector2 = self.vectors[(i + 1)//2, j//2]
+                    self.umatrix[i, j] = np.linalg.norm(vector1 - vector2)
+
+                else:
+                    if self.grid_type == "hex":
+                        if hex_count % 2 == 0:
+                            distance = np.linalg.norm(self.vectors[(i + 1)//2, (j - 1)//2] -\
+                                                      self.vectors[(i - 1)//2, (j + 1)//2])
+                        else:
+                            distance = np.linalg.norm(self.vectors[(i - 1)//2, (j - 1)//2] -\
+                                                      self.vectors[(i + 1)//2, (j + 1)//2])
+                        self.umatrix[i, j] = distance
+                        hex_count += 1
+
+                    else:
+                        distance1 = np.linalg.norm(self.vectors[i//2, j//2] - \
+                                                   self.vectors[(i + 1)//2, (j + 1)//2])
+                        distance2 = np.linalg.norm(self.vectors[(i - 1)//2, (j + 1)//2] - \
+                                                   self.vectors[(i + 1)//2, (j - 1)//2])
+                        self.umatrix[i, j] = (distance1 + distance2)/2
+
+
+
     
     def save(self, path):
         """ Saves all data of this instance to path. """
