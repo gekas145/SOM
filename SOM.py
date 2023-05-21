@@ -41,7 +41,7 @@ class SOM:
             return res
 
 
-    def __init__(self, 
+    def __init__(self,
                  nrows, ncols, 
                  epochs=100,
                  learning_rate_start=1,
@@ -65,7 +65,7 @@ class SOM:
         self.learning_rate_end = learning_rate_end
 
         if bootstrap and bootstrap <= 0:
-            raise ValueError("bootsrap must be greater than 0")
+            raise ValueError("bootstrap must be greater than 0")
 
         self.bootstrap = bootstrap
 
@@ -75,7 +75,7 @@ class SOM:
         
         self.indexes = np.array([[[i, j] for j in range(ncols)] for i in range(nrows)])
         if self.grid_type == "hex":
-            # doubled axes for easier distances computation on hexagonal grid
+            # doubled coords for easier distances computation on hexagonal grid
             for i in range(self.indexes.shape[0]):
                 if i % 2 == 0:
                     self.indexes[i, :, 1] *= 2
@@ -160,8 +160,21 @@ class SOM:
         return np.array(n_closest_idx)
 
     def plot(self, title="", path=None, plot_umatrix=True, plot_categories=False, legend=False):
-        """ Plots umatrix learned from fit, if data categories were provided can also draw category plot. """
+        """ 
+        Plots umatrix learned from fit, if data categories were provided can also draw category plot. 
         
+        Args:
+            title          : main title of the plot.
+            path           : if not None, generated plot will be saved to this path.
+            plot_umatrix   : if True, umatrix will be shown.
+            plot_categories: if True, categories plot will be shown, requires y argument in fit function.
+            legend         : if True, categories plot will have a legend, otherwise cell will have category inside as text.
+        
+        """
+
+        if not (plot_categories or plot_umatrix):
+            raise Exception("At least one of plot_categories and plot_umatrix must True!")
+
         if self.umatrix is None:
             raise Exception("This instance should be fitted first!")
 
@@ -169,7 +182,7 @@ class SOM:
             raise Exception("This instance should be fitted with categories vector first!")
 
         if plot_categories and plot_umatrix:
-            fig, axs = plt.subplots(1, 2, figsize=(6, 6))
+            fig, axs = plt.subplots(1, 2, figsize=(8, 8))
             fig.suptitle(title)
             axs[0].set_title("Umatrix")
             axs[1].set_title("Categories")
@@ -197,7 +210,7 @@ class SOM:
                 d = dict(zip(labels, handles))
                 handles, labels = np.array(list(d.values())), np.array(list(d.keys()))
                 idx = np.argsort(labels)
-                axs[i].legend(handles[idx], labels[idx], loc="center left", bbox_to_anchor=(1, 0.75))
+                axs[i].legend(handles[idx], labels[idx], loc="center left", bbox_to_anchor=(1, 0.6))
                 
         if path:
             plt.savefig(path, dpi=600, bbox_inches="tight")
@@ -377,12 +390,15 @@ class SOM:
         with open(path, "r") as file:
             attr_dict = json.load(file)
         
-        vectors = np.array(attr_dict.pop("vectors"))
-        categories = np.array(attr_dict.pop("categories"))
+        special_attrs = {"vectors": None, "categories": None, "umatrix": None}
+        for name in special_attrs:
+            val = attr_dict.pop(name)
+            special_attrs[name] = np.array(val) if val is not None else val
         
         som = SOM(**attr_dict)
-        som.vectors = vectors
-        som.categories = categories
+        som.vectors = special_attrs["vectors"]
+        som.categories = special_attrs["categories"]
+        som.umatrix = special_attrs["umatrix"]
 
         return som
 
