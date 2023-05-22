@@ -104,9 +104,9 @@ class SOM:
                 data = X
             learning_rate = self.learning_rate_start * (self.learning_rate_end/self.learning_rate_start)**(t/self.epochs)
             for i in range(data.shape[0]):
-                bmu = self.get_n_closest_idx(self.vectors, data[i, :])[0]
+                bmu = self.__get_n_closest_idx(self.vectors, data[i, :])[0]
 
-                distances = self.get_grid_distances(bmu)
+                distances = self.__get_grid_distances(bmu)
                 self.vectors += learning_rate * np.expand_dims(self.neighbourhood_func(distances, t), 2) * (data[i, :] - self.vectors)
         
         self.__umatrix()
@@ -119,13 +119,13 @@ class SOM:
 
         for i in range(self.vectors.shape[0]):
             for j in range(self.vectors.shape[1]):
-                nearest_idx = self.get_n_closest_idx(data, self.vectors[i, j], n=10)
+                nearest_idx = self.__get_n_closest_idx(data, self.vectors[i, j], n=10)
                 nearest_idx = [idx[0] for idx in nearest_idx]
                 nearest_categories = y[nearest_idx]
                 categories, counts = np.unique(nearest_categories, return_counts=True)
                 self.categories[i, j] = str(categories[counts.argmax()])
 
-    def get_grid_distances(self, bmu_idx):
+    def __get_grid_distances(self, bmu_idx):
         """ Calculates distances from best matching unit(bmu) to other points on the grid and returns them as matrix. """
         if self.grid_type == "hex":
             # manhattan distance on hexagonal grid
@@ -139,7 +139,7 @@ class SOM:
         return distances
 
     @staticmethod
-    def get_n_closest_idx(X, vector, n=1):
+    def __get_n_closest_idx(X, vector, n=1):
         """ Returns indexes of n closest vectors from X to vector. """
 
         distances = np.sqrt(np.sum((X - vector)**2, axis=2))
