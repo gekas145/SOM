@@ -1,6 +1,6 @@
 # SOM
 
-Self-organizing map, aka SOM, aka Kohonen network implementation in Python. For details of usage check out [demo.ipynb](https://github.com/gekas145/SOM/blob/main/demo.ipynb).
+Self-organizing map, aka SOM, aka Kohonen network implementation in Python. This algorithm is useful for visualising high-dimensional data. For details of usage check out [demo.ipynb](https://github.com/gekas145/SOM/blob/main/demo.ipynb).
 
 Sources:
 
