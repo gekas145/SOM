@@ -18,6 +18,7 @@ class SOM:
         grid_type               : type of self-organizing map coordinate system, can be "hex" or "rect".
         neighbourhood_func      : type of neighbourhood function, can be "gaussian" or "mexican_hat".
         bootstrap               : if None, no bootstrap will be used, if positive float, then int(X.shape[0]*bootstrap) samples will be randomly drawn on each epoch.
+        seed                    : int, allows reproducibility, if None results won't be reproducible.
     """
 
     class NeighbourhoodFunction:
@@ -50,7 +51,8 @@ class SOM:
                  neighbourhood_rate_end=1,
                  grid_type="hex",
                  neighbourhood_func="gaussian",
-                 bootstrap=None):
+                 bootstrap=None,
+                 seed=None):
 
         self.nrows = nrows
         self.ncols = ncols
@@ -60,6 +62,8 @@ class SOM:
         self.umatrix = None
 
         self.epochs = epochs
+
+        self.seed = seed
 
         self.learning_rate_start = learning_rate_start
         self.learning_rate_end = learning_rate_end
@@ -91,6 +95,10 @@ class SOM:
 
     def fit(self, X, y=None):
         """ Fits map to data X, if category vector y provided each vector from map will get a category assigned. """
+        
+        if self.seed:
+            np.random.seed(self.seed)
+        
         self.vectors = np.random.uniform(np.min(X), np.max(X), (self.nrows, self.ncols, X.shape[1]))
         if self.bootstrap:
             n = int(X.shape[0] * self.bootstrap)
